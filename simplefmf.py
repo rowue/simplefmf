@@ -1,310 +1,224 @@
-class FMFTable:
+class FMFTable(Object):
+
+
     """Class for managing the individual data-tables.
 
     """
+    def __init__(self, name=None, symbol=None):
 
-    def __init__(self,
-            name=None,
-            symbol=None):
-
-        # Structure as follows
-        # name and letter holds the name an letters of the table
-        # this is not necessary if you use one table but it's needed
-        # if you use more of them
+        # Structure as follows:
+        # Name and letter holds the name an letters of the table.
+        # This is not necessary if you use one table but it's needed
+        # if you use more of them.
         # 
         # data_definition holds a collection of the definitions
-        # of the individual data rows
+        # of the individual data rows including comments.
+        # At this time we use two indexes - one for the 
+        # mapping of row to definition and one for mapping
+        # definition to data row. The last will vanish if we
+        # use a seperate class for definitions.
         #
-        # data container holds the individual data rows
+        # data holds the individual data rows.
         #
         # I'm aware that much of the data-row handling is easier
         # with numpy - however using numpy requires numpy as
         # dependency - and one goal of this module is to be as
-        # small and "simple" as possible
+        # small and "simple" as possible.
+        #
+        # Fr 18. Jun 14:20:09 CEST 2010 - rowue
         #
 
-        self.comment = []
-        self.data_definition = []
+        self._data_definition = []  #   Definitions including comments(!)
         self.data = []
-        self.data_index = {}
+        self._data_index = {}       #   Index to definitions excl. comments.
+        self._col_index = {}        #   Mapping definitions to rows
         self._col_count = 0
         self._row_count = 0
-
-        self.set_name(name)
-        self.set_symbol(symbol)
-
-    def set_name(self, name):
-        """Set's the name of the table."""
-
         self.name = name
-            
-    def set_symbol(self, symbol):
-        """Set's the symbol of the table.
-        
-        """
-
         self.symbol = symbol
 
-    def get_name(self):
-        """Returns the name of the table."""
+    def _clear_index(self):
+        """Clear definition index."""
+        if len(self._data_index) != 0:
+            self._data_index = {}
+            self._col_index = {}
 
-        return self.name
-
-    def get_symbol(self):
-        """Returns the symbol of the table."""
-
-        return self.symbol
-
-    def set_data_definitions(self, definition):
-        """Set's the data definition.
-        
-           This method is intended to set up the
-           whole set of definitions in an bunch.
-
-        """
-
-        if definition is not None:
-            # Maybe more checking here
-            self.data_definition = definition
-            self.rebuild_index()
-        else:
-            # Maybe not the right Error
-            raise ValueError
-
-    def get_data_definitions(self):
-        """Get's the data definition."""
-
-        return self.data_definition
-
-    def add_data_definition(self, value, description=None):
-        """Add's an data definition.
-        
-           This method is intended to decalare
-           definitions with iterative calls.
-
-           You can call this method either direct with
-           an dict (name:definition) or supply two
-           strings where the first is the name, the
-           second is the definition ("U1", "mV").
-
-           You may even let the description blank,
-           which would provide unusuable results.
-        
-        """
-
-        if value is not None:
-            # Maybe more checking here
-
-            if isinstance(value, dict) and description is None:
-                self.data_definition.append(value)
-            elif isinstance(value, basestring):
-                tmp_val = {}
-                tmp_val[value] = description
-                self.data_definition.append(tmp_val)
-            else: 
-                raise TypeError, "Please use dict or string"
-
-            if (len(self.data_index) != 0):
-                self.clear_index()
-        else:
-            # Maybe not the right Error
-            raise TypeError, "You should provide some data"
-
-    def set_data(self, data):
-        """This method is intended to set all data at once."""
-
-        if data is not None:
-            self.data = data
-        else:
-            # Maybe not the right Error
-            raise ValueError
-
-    def add_data_column(self, column):
-        """This method is intended to add some data on per column basis."""
-
-        if (column is not None) \
-            and (self._col_count < len(self.data_definition)):
-            self.data.append(column)
-            self._col_count += 1
-        else:
-            # Maybe not the right Error
-            raise ValueError
-
-    def add_data_row(self, row):
-        """This method is intended to add some data on per row basis."""
-
-        if row is not None and (len(row) == len(self.data_definition)):
-            if (len(self.data) == 0):
-                for  i in range(len(row)):
-                    self.data.append([])
-                       
-            for  i in range(len(row)):
-                self.data[i].append(row[i])
-        else:
-            # Maybe not the right Error
-            raise TypeError
-
-    def get_data(self):
-        """This method is intended to gather all data."""
-
-        return self.data
-
-    def get_data_by_row(self):
-        """This method is intended to gather on per row basis."""
-
-        out = []
-
-        if (len(self.data[0]) > self._row_count):
-            for i in range(len(self.data)):
-                tmp_data = self.data[i]
-                out.append(tmp_data[self._row_count])
-
-            self._row_count += 1
-
-            return out
-        else:
-            return None
-        
-    def get_data_by_col_num(self, number):
-        """This method is intended to gather on per column basis."""
-
-        if number is not None:
-            return self.data[number]
-
-    def clear_index(self):
-        """This method clears the definition index."""
-
-        if (len(self.data_index) != 0):
-            self.data_index = {}
-
-    def rebuild_index(self):
-        """This method rebuilds the index of definitions.
+    def _rebuild_index(self):
+        """Rebuild definition index.
 
            It may lend to problems if the definitions where
            not simple strings but more complicated types
            of objects.
 
         """
+        self._clear_index()
+        counter = 0
+        for value, key in enumerate(self._data_definition):
+            if isinstance(key, dict):
+                key_list = key.keys()
+                self._data_index[key_list[0]] = value
+                self._col_index[key_list[0]] = counter
+                counter += 1
 
-        self.clear_index()
+    def _set_data_definitions(self, definition):
+        """Set the data definition.
         
-        for value, key in enumerate(self.data_definition):
-            key_list = key.keys()
-            self.data_index[key_list[0]] = value
+           This method is intended to set up the
+           whole set of definitions in an bunch.
 
+        """
+        self.data_definition = definition
+        self._rebuild_index()
 
-    def get_data_index(self):
-        """This method is intended to get the column index."""
+    data_definitions = property(lambda self: self._data_definition,
+                                _set_data_definitions)
 
-        if (len(self.data_index) == 0):
-            self.rebuild_index()
+    def add_data_definition(self, value, description=None):
+        """Add an data definition.
+        
+           This method is intended to declare
+           definitions with iterative calls.
 
-        return self.data_index
+           You can call this method either direct with
+           an dict (name:definition) or supply two
+           strings where the first is the name, the
+           second is the definition ("U1", "mV").
+           You may even let the description blank,
+           which would be charged as comment.
 
-    def get_col_names(self):
-        """This method is intended to get the column names."""
+        """
+        if description is not None:
+            tmp_val = {}
+            tmp_val[value] = description
+            value = tmp_val
+        if isinstance(value, dict):     # Not a comment
+            key_list = value.keys()
+            self._col_index[key_list[0]] = len(self._data_index)
+            self._data_index[key_list[0]] = len(self._data_definition)
+        self._data_definition.append(value)
 
+    def add_data_column(self, column):
+        """Add a complete column of data."""
+        if self._col_count >= len(self._data_index):
+            raise RuntimeError("Too many columns. "
+                + " According to data definitions there should be "
+                + str(len(self._data_index)) + " columns instead "
+                + " of " + str(self._col_count) + ".")
+        else:
+            self.data.append(column)
+            self._col_count += 1
+
+    def add_data_row(self, row):
+        """Add a row of data."""
+        if len(row) != len(self._data_index):
+            raise RuntimeError("Too many columns in row. "
+                + " According to data definitions there should be "
+                + str(len(self._data_index)) + " columns per row instead "
+                + " of " + str(self._col_count) + ".")
+        else:
+            if len(self.data) == 0:
+                for  i in xrange(len(row)):
+                    self.data.append([])
+            for  i in xrange(len(row)):
+                self.data[i].append(row[i])
+
+    def get_data_by_row(self):
+        """Get a row of data. Can be used iterative."""
         out = []
-
-        for value, key in enumerate(self.data_definition):
-            key_list = key.keys()
-            out.append(key_list[0])
-
-        return out
-
-    def get_definition_by_name(self, name):
-        """Returns the definition of an field by its name."""
-
-        if name is not None and self.data_index.has_key(name):
-            value = self.data_definition[self.data_index[name]]
-
-            return value[name]
+        if len(self.data[0]) > self._row_count:
+            for i in xrange(len(self.data)):
+                tmp_data = self.data[i]
+                out.append(tmp_data[self._row_count])
+            self._row_count += 1
+            return out
         else:
             return None
 
+    data_row = property(get_data_by_row, add_data_row)
+        
+    def get_data_by_col_num(self, number):
+        """Get data column (number). Number starts at zero."""
+        return self.data[number]
+
+    def get_col_names(self):
+        """Get column names."""
+        out = self._data_index.keys()
+        return out
+
+    def get_definition_by_name(self, name):
+        """Get field-definition by name."""
+        value = self._data_definition[self._data_index[name]]
+        return value[name]
+
     def get_data_by_col_name(self, name):
-        """This method is intended to get data by column name."""
-
-        if (len(self.data_index) == 0):
-            rebuild_index()
-
-        if name is not None and self.data_index.has_key(name):
-            col_num = self.data_index[name]
-
-            return self.data[col_num]
-        else:
-            raise ValueError
+        """Get data-column by name."""
+        col_num = self._col_index[name]
+        return self.data[col_num]
 
     def verify_consistency(self):
-        """This method verifys if the data structure is consistent.
+        """Verifys if the data structure is consistent.
 
-           It verifys if the number of columns is equal to the
-           number of column-definitions and if the number of
-           rows is the same for all columns.
+           The number of columns have to be equal to the number
+           of definitions and the number of rows has to be
+           the same on all columns.
 
-           It will return None if there is no data to verify.
-           True if everything is o.k. False otherwise.
+           Return None if there is no data to verify.
+
         """
-
-        if (len(self.data_definition) != len(self.data)):
+        if len(self._data_index) != len(self.data):
             return False
         else:
-            if (len(self.data) > 0):
+            if len(self.data) > 0:
                 testcount = len(self.data[0])
-
-                for i in range(1, len(self.data)):
+                for i in xrange(1, len(self.data)):
                     testcolumn = self.data[i]
-                    if (len(testcolumn) != testcount):
+                    if len(testcolumn) != testcount:
                         return False
                 return True
             else:
                 return None
 
     def write_table_entry (self, filehandle):
-        """Writing the table entry in the tables* section."""
-
+        """Write table entry in table definitions on filehandle."""
         pattern = "%s: %s\n"
         if self.name is not None and self.symbol is not None:
             filehandle.write(pattern % (self.name, self.symbol))
 
-    def write_table_definition (self, filehandle, comment):
-        """This method writes the table definitions."""
+    def write_table_definition (self, filehandle, comment,
+                                comments=True):
+        """Write the table definitions to filehandle.
+        
+           Comments will be suppressed if comments is set to false.
 
+        """
         pattern = "%s: %s\n"
         if self.symbol is not None:
             filehandle.write(pattern % ("[*data definitions", 
-                self.symbol + "]"))
+                            self.symbol + "]"))
         else:
             filehandle.write("[*data definitions]\n")
-
-        if len(self.comment) != 0:
-            for i in self.comment:
-                commpattern = "%s %s\n"
+        if comments:
+            commpattern = "%s %s\n"
+        for i in self.data_definition:
+            if isinstance(i, dict):
+                keylist = i.keys()
+                key = keylist[0]
+                filehandle.write(pattern % (key, i[key]))
+            elif comments:
                 filehandle.write(commpattern % (comment, repr(i)))
 
-        for i in self.data_definition:
-            keylist = i.keys()
-            key = keylist[0]
-
-            filehandle.write(pattern % (key, i[key]))
-
     def write_table_data (self, filehandle, delimeter):
-        """This method writes the table data."""
-
+        """Write table data to filehandle."""
         pattern = "%s: %s\n"
         joinpattern = delimeter
-
         if self.symbol is not None:
-            filehandle.write(pattern % ("[*data", 
-                self.symbol + "]"))
+            filehandle.write(pattern % ("[*data", self.symbol + "]"))
         else:
             filehandle.write("[*data]\n")
-
         if delimeter.lower() == "semicolon":
             joinpattern = ";"
         elif delimeter.lower() == "whitespace":
             joinpattern = "\t"  #   do st nasty
-
         for i in range(len(self.data[0])):
             tmpbuf = []
             for j in range(len(self.data)):
@@ -315,23 +229,18 @@ class FMFTable:
                 outbuf.expandtabs(4)
             filehandle.write(outbuf + "\n")
                 
-class SimpleFMF:
+class SimpleFMF(Object):
+
+
     """Simple implementation of the "Full-Metadata Format".
     
        The Format is desribed in http://arxiv.org/abs/0904.1299.
-
        "Simple" means there is NO verification of entered units and
-       NO searching methods. Furthermore you will get/set some
+       NO searching methods.  Furthermore you will get/set some
        memory based structures.
 
     """
-
-    def __init__(self,
-            title='-',
-            creator=None,
-            place=None,
-            created=None):
-
+    def __init__(self, title='-', creator=None, place=None, created=None):
         self.fmfversion = 1.0
         self.version = 0.1
         self.fmflevel = 0
@@ -345,39 +254,27 @@ class SimpleFMF:
         self.tableref_name = {}
         self.section_order = []
         self.reference_order = {}
-        self.base_reference_order = [
-                'title',
-                'creator',
-                'created',
-                'place']
-
-        self.estimate_creation_date(created)    # self.reference[created]
-        self.estimate_creator(creator)          # self.reference[creator]
-        self.estimate_charset()                 # self.charset
-
+        self._base_reference_order = [ 'title', 'creator', 'created', 'place']
+        self._estimate_creation_date(created)   # self.reference[created]
+        self._estimate_creator(creator)         # self.reference[creator]
+        self._estimate_charset()                # self.charset
         self.reference['title'] = title
-
         if (place is None):
             place = "Home"
-
         self.reference['place'] = place
-
-
     # Handling of basic reference data (charset, creator, place, created)
 
-    def estimate_charset (self):
-        """Simple method to estimate the used charset from system variables."""
+    def _estimate_charset (self):
+        """Set used charset from system parameters."""
         import locale
-
         charset = locale.getpreferredencoding()
         self.charset = charset.lower()
 
-    def estimate_creation_date (self, created):
-        """Simple method to estimate the creation date if not supplied."""
+    def _estimate_creation_date (self, created):
+        """Set creation date from localtime."""
         if created is None:
             try:
                 import time
-
                 created = time.strftime('%Y-%m-%d %H:%M:%S') 
                 offset_mask = "%+03d:00"
                 if (time.daylight != 0):
@@ -386,17 +283,16 @@ class SimpleFMF:
                     created += offset_mask % (int(- time.timezone / 3600))
             except:
                 created = "1970-01-01 00:00:00+00:00"
-
         else:
             created = created
-
         self.reference['created'] = created
 
-
-    def estimate_creator (self, creator):
-        """Simple method to estimate the creator if not supplied."""
+    def _estimate_creator (self, creator):
+        """Estimate the creator.
+        
+           Support for setting the E-Mail was dropped.
+        """
         if creator is None:
-            hostname = self.estimate_hostname()
             try:
                 import getpass
                 username = getpass.getuser()
@@ -409,31 +305,15 @@ class SimpleFMF:
                         if letter.isalpha():
                             hasalpha = True
                     if hasalpha:
-                        creator = "%s <%s@%s>" % (gecos, username, hostname)
+                        creator = "%s" % (gecos)
                     else:
-                        creator = "%s@%s" % (username, hostname)
+                        creator = "%s" % (username)
                 except:
-                    creator = "%s@%s" % (username, hostname)
+                    creator = "%s" % (username)
             except:
                 creator = 'unknown'
 
         self.reference['creator'] = creator
-
-
-    def estimate_hostname(self):
-        """Simple helper method to estimate the hostname if not supplied.
-
-           This is used for "estimate_creator" to give an E-Mail address.
-           
-        """
-
-        try:
-            import socket
-            hostname = socket.getfqdn()
-        except:
-            hostname = "localhost"
-
-        return hostname
 
     # Handling of reference data - adding data from outside to memory
     # 
@@ -457,11 +337,8 @@ class SimpleFMF:
            The later checks for existence of the occuring section.
 
         """
-
         self.subreference = name
-
         self.subreferences[name] = {}
-
         self.section_order.append(name)
         self.reference_order[name] = []
 
@@ -472,14 +349,12 @@ class SimpleFMF:
            for adding subsection entries.
 
         """
-
         if (self.subreference is None):
             refname = self.reference
             self.base_reference_order.append(name)
         else:
             refname = self.subreferences[self.subreference]
             self.reference_order[self.subreference].append(name)
-
         refname[name] = data    # perhaps we should change to an list here
 
     def add_subsection_reference_entry (self, name, data, subsection=None):
@@ -493,7 +368,6 @@ class SimpleFMF:
            Will create sections if not existing.
 
         """
-
         if (subsection is None):
             if (self.subreference is None):
                 refname = self.reference
@@ -505,12 +379,9 @@ class SimpleFMF:
             if (not self.subreferences.has_key(subsection)):
                 self.subreferences[subsection] = {}
                 self.section_order.append(subsection)
-
 #        self.reference_order = {}
-
             refname = self.subreferences[subsection]
             self.reference_order[subsection].append(name)
-
         refname[name] = data    # perhaps we should change to an list here
 
     def get_reference_keywords (self, subsection=None):
@@ -520,7 +391,6 @@ class SimpleFMF:
            be used.
 
         """
-
         if (subsection is None):
             reflist = self.reference
         else:
@@ -528,9 +398,7 @@ class SimpleFMF:
                 reflist = self.subreferences[subsection]
             else:
                 return None
-
         return reflist.keys()
-
 #    def set_subsection (self, name=None):
 #        """Method (perhaps unused) to set the subsection pointer.
 #        
@@ -543,8 +411,6 @@ class SimpleFMF:
 
     def get_reference_values (self, keyword, subsection=None):
         """Method to query values from reference."""
-
-
         if (subsection is None):
             reflist = self.reference
         else:
@@ -552,7 +418,6 @@ class SimpleFMF:
                 reflist = self.subreferences[subsection]
             else:
                 return None
-
         if (not reflist.has_key(keyword)):
             return None
 
@@ -567,8 +432,7 @@ class SimpleFMF:
            Keeping subsection unfilled or setting to
            "None" will give you the main reference section.
 
-       """
-
+        """
         if (subsection is None):
             reflist = self.reference
         else:
@@ -576,7 +440,6 @@ class SimpleFMF:
                 reflist = self.subreferences[subsection]
             else:
                 return None
-
         pairs = zip(reflist.keys(), reflist.values()) 
 
         return pairs
@@ -595,50 +458,40 @@ class SimpleFMF:
            As return value you will get the table object.
 
         """
-
         if table is None:
             table = FMFTable(name=table_name, symbol=table_symbol)
         elif not isinstance(table, simplefmf.FMFTable):
             raise TypeError, "Please supply simplefmf.FMFTable or nothing."
-
         if len(self.tables) > 0 \
             and (table.name is None or table.symbol is None):
             raise ValueError, "Multiple tables must have names and symbols."
-
         if len(self.tableref_symbol) > 0:
             self.tableref_symbol = {}
         if len(self.tableref_name) > 0:
             self.tableref_name = {}
-
         self.tables.append(table)
         return table
 
     def build_table_index (self):
         """This method rebuilds the table indexes."""
-
         self.tableref_symbol = {}
         self.tableref_name = {}
-
         number_of_tables = len(self.tables)
 
         for i in range(number_of_tables):
             table = self.tables[i]
-
             if number_of_tables > 1 \
                 and (table.name() is None or table.symbol() is None):
                 self.tableref_symbol = {}
                 self.tableref_name = {}
                 raise ValueError, "Multiple tables must have names and symbols."
-
             self.tableref_symbol[table.symbol] = i
             self.tableref_name[table.name] = i
 
     def get_table_by_name (self, name):
         """This method retrieves a table by it's name."""
-
         if len(self.tableref_name) == 0:
             self.build_table_index()
-
         if name is not None and self.tableref_name.has_key(name):
             table = self.tables[self.tableref_name[name]]
             return table
@@ -647,10 +500,8 @@ class SimpleFMF:
 
     def get_table_by_symbol (self, symbol):
         """This method retrieves a table by it's symbol."""
-
         if len(self.tableref_symbol) == 0:
             self.build_table_index()
-
         if symbol is not None and self.tableref_symbol.has_key(symbol):
             table = self.tables[self.tableref_symbol[symbol]]
             return table
@@ -659,7 +510,6 @@ class SimpleFMF:
 
     def get_table_by_number (self, number):
         """This method retrieves a table by it's number."""
-
         if number is not None:
             table = self.tables[number]
             return table
@@ -668,23 +518,18 @@ class SimpleFMF:
             
     def get_table_names (self):
         """This method returns the names of the tables."""
-
         if len(self.tableref_name) == 0:
             self.build_table_index()
-
         return self.tableref_name.keys()
 
     def get_table_symbols (self):
         """This method returns the symbol of the tables."""
-
         if len(self.tableref_symbol) == 0:
             self.build_table_index()
-
         return self.tableref_symbol.keys()
 
     def get_tables (self):
         """This method returns the tables itself."""
-
         return self.tables
 
     #
@@ -693,23 +538,18 @@ class SimpleFMF:
 
     def write_header (self, filehandle):
         """This method writes the headerline."""
-        
         pattern = "%s -*- %s; %s; %s -*-\n"
         deli = repr(self.delimeter)
-
         filehandle.write(pattern % (self.comment,
             "fmf-version: " + repr(self.fmfversion),
             "coding: " + self.charset,
             "delimeter: " + deli.replace("'","")))
-
         pattern = "%s %s\n"
-
         filehandle.write(pattern % (self.comment,
             "Full-Metadata Format as described in " +
                         "http://arxiv.org/abs/0904.1299"))
         filehandle.write(pattern % (self.comment,
             "written by simplefmf " + str(self.version) + " (python)"))
-
 
     def write_reference (self, filehandle, section, name=None):
         """This method writes the reference sections."""
@@ -720,7 +560,6 @@ class SimpleFMF:
             pattern = "[%s]\n"
             filehandle.write(pattern % name)
             liste = self.reference_order[name]
-
         pattern = "%s: %s\n"
         for key in liste:
             if isinstance(section[key], basestring):
@@ -739,42 +578,29 @@ class SimpleFMF:
                 else:
                     for i in section[key]:
                         holder.append(repr(i))
-                
                 filehandle.write(pattern % (key, seperator.join(holder)))
             else:
                 filehandle.write(pattern % (key, repr(section[key])))
 
-
     def write_to_file (self, filename):
         """This method writes the data in an (FMF-)file."""
-
         status = False
-
         # TODO: verify some boundary conditions before writing
-
         filehandle = open(filename, 'w')
         if filehandle is not None:  #   TODO: exception handling
             self.write_header(filehandle)
             self.write_reference(filehandle, self.reference)
-
             for name in self.section_order:
                 self.write_reference(filehandle,
                         self.subreferences[name], name)
-
             tmp_table = self.tables[0]
-
             if len(self.tables) > 1 or tmp_table.get_symbol() != None:
                 filehandle.write("[*table definitions]\n")
-
                 for tmp_table in self.tables:
                     tmp_table.write_table_entry(filehandle)
-
             for tmp_table in self.tables:
                 tmp_table.write_table_definition (filehandle, self.comment)
                 tmp_table.write_table_data(filehandle, self.delimeter)
-
             filehandle.close()
-            
             status = True
-
         return status
