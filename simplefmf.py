@@ -1,4 +1,4 @@
-class FMFTable(Object):
+class FMFTable(object):
 
 
     """Class for managing the individual data-tables.
@@ -199,7 +199,7 @@ class FMFTable(Object):
             filehandle.write("[*data definitions]\n")
         if comments:
             commpattern = "%s %s\n"
-        for i in self.data_definition:
+        for i in self._data_definition:
             if isinstance(i, dict):
                 keylist = i.keys()
                 key = keylist[0]
@@ -229,14 +229,14 @@ class FMFTable(Object):
                 outbuf.expandtabs(4)
             filehandle.write(outbuf + "\n")
                 
-class SimpleFMF(Object):
+class SimpleFMF(object):
 
 
     """Simple implementation of the "Full-Metadata Format".
     
        The Format is desribed in http://arxiv.org/abs/0904.1299.
        "Simple" means there is NO verification of entered units and
-       NO searching methods.  Furthermore you will get/set some
+       NO searching methods.  Furthermore you will worked on
        memory based structures.
 
     """
@@ -259,8 +259,8 @@ class SimpleFMF(Object):
         self._estimate_creator(creator)         # self.reference[creator]
         self._estimate_charset()                # self.charset
         self.reference['title'] = title
-        if (place is None):
-            place = "Home"
+        if place is None:
+            place = "Earth, Universe"
         self.reference['place'] = place
     # Handling of basic reference data (charset, creator, place, created)
 
@@ -271,7 +271,7 @@ class SimpleFMF(Object):
         self.charset = charset.lower()
 
     def _estimate_creation_date (self, created):
-        """Set creation date from localtime."""
+        """Set creation date from localtime if not supplied."""
         if created is None:
             try:
                 import time
@@ -349,9 +349,9 @@ class SimpleFMF(Object):
            for adding subsection entries.
 
         """
-        if (self.subreference is None):
+        if self.subreference is None:
             refname = self.reference
-            self.base_reference_order.append(name)
+            self._base_reference_order.append(name)
         else:
             refname = self.subreferences[self.subreference]
             self.reference_order[self.subreference].append(name)
@@ -368,18 +368,17 @@ class SimpleFMF(Object):
            Will create sections if not existing.
 
         """
-        if (subsection is None):
-            if (self.subreference is None):
+        if subsection is None:
+            if self.subreference is None:
                 refname = self.reference
-                self.base_reference_order.append(name)
+                self._base_reference_order.append(name)
             else:
                 refname = self.subreferences[self.subreference]
                 self.reference_order[self.subreference].append(name)
         else:
-            if (not self.subreferences.has_key(subsection)):
+            if not self.subreferences.has_key(subsection):
                 self.subreferences[subsection] = {}
                 self.section_order.append(subsection)
-#        self.reference_order = {}
             refname = self.subreferences[subsection]
             self.reference_order[subsection].append(name)
         refname[name] = data    # perhaps we should change to an list here
@@ -555,7 +554,7 @@ class SimpleFMF(Object):
         """This method writes the reference sections."""
         if name is None:    #   main section
             filehandle.write("[*reference]\n")
-            liste = self.base_reference_order
+            liste = self._base_reference_order
         else:
             pattern = "[%s]\n"
             filehandle.write(pattern % name)
