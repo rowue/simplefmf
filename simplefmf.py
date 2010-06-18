@@ -277,7 +277,7 @@ class SimpleFMF(object):
                 import time
                 created = time.strftime('%Y-%m-%d %H:%M:%S') 
                 offset_mask = "%+03d:00"
-                if (time.daylight != 0):
+                if time.daylight != 0:
                     created += offset_mask % (int(- time.altzone / 3600))
                 else:
                     created += offset_mask % (int(- time.timezone / 3600))
@@ -312,7 +312,6 @@ class SimpleFMF(object):
                     creator = "%s" % (username)
             except:
                 creator = 'unknown'
-
         self.reference['creator'] = creator
 
     # Handling of reference data - adding data from outside to memory
@@ -324,7 +323,7 @@ class SimpleFMF(object):
     #       Each dict is named by the reference name (setup pe)
 
     def add_reference_section (self, name):
-        """Method to add an reference section. You may either use:
+        """Add an reference section. You may either use:
             
            "add_reference_section(Name_of_Section)"
            "add_reference_entry(Name_of_entry, Data)"
@@ -333,8 +332,8 @@ class SimpleFMF(object):
            .
            "add_reference_section(Name_of_Section)"
 
-           calls or use "add_subsection_reference_entry".
-           The later checks for existence of the occuring section.
+           or use "add_subsection_reference_entry".
+           The later checks for existence of the section.
 
         """
         self.subreference = name
@@ -343,10 +342,9 @@ class SimpleFMF(object):
         self.reference_order[name] = []
 
     def add_reference_entry (self, name, data):
-        """Method to add an reference entry.
+        """Add reference entry.
         
-           May used in conjunction with "add_reference_section"
-           for adding subsection entries.
+           Use in conjunction with "add_reference_section".
 
         """
         if self.subreference is None:
@@ -358,7 +356,7 @@ class SimpleFMF(object):
         refname[name] = data    # perhaps we should change to an list here
 
     def add_subsection_reference_entry (self, name, data, subsection=None):
-        """Method to directly add an subsection reference entry.
+        """Add an subsection reference entry.
         
            May be used instead of a group of "add_reference_section",
            "add_reference_entry" calls. Can also be used to add an
@@ -390,7 +388,7 @@ class SimpleFMF(object):
            be used.
 
         """
-        if (subsection is None):
+        if subsection is None:
             reflist = self.reference
         else:
             if self.subreferences.has_key(subsection):
@@ -410,16 +408,15 @@ class SimpleFMF(object):
 
     def get_reference_values (self, keyword, subsection=None):
         """Method to query values from reference."""
-        if (subsection is None):
+        if subsection is None:
             reflist = self.reference
         else:
             if self.subreferences.has_key(subsection):
                 reflist = self.subreferences[subsection]
             else:
                 return None
-        if (not reflist.has_key(keyword)):
+        if not reflist.has_key(keyword):
             return None
-
         return reflist[keyword]
 
     def get_reference_pairs (self, subsection=None):
@@ -432,7 +429,7 @@ class SimpleFMF(object):
            "None" will give you the main reference section.
 
         """
-        if (subsection is None):
+        if subsection is None:
             reflist = self.reference
         else:
             if self.subreferences.has_key(subsection):
