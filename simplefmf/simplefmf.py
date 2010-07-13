@@ -122,39 +122,8 @@ class FMFTable(object):
             for  i in xrange(len(row)):
                 self.data[i].append(row[i])
 
-    def get_data_by_row(self):
-        """Get a row of data. Can be used iterative."""
-        out = []
-        if len(self.data[0]) > self._row_count:
-            for i in xrange(len(self.data)):
-                tmp_data = self.data[i]
-                out.append(tmp_data[self._row_count])
-            self._row_count += 1
-            return out
-        else:
-            return None
-
-    data_row = property(get_data_by_row, add_data_row)
+    data_row = property(None, add_data_row)
         
-    def get_data_by_col_num(self, number):
-        """Get data column (number). Number starts at zero."""
-        return self.data[number]
-
-    def get_col_names(self):
-        """Get column names."""
-        out = self._data_index.keys()
-        return out
-
-    def get_definition_by_name(self, name):
-        """Get field-definition by name."""
-        value = self._data_definition[self._data_index[name]]
-        return value[name]
-
-    def get_data_by_col_name(self, name):
-        """Get data-column by name."""
-        col_num = self._col_index[name]
-        return self.data[col_num]
-
     def verify_consistency(self):
         """Verifys if the data structure is consistent.
 
@@ -381,84 +350,6 @@ class SimpleFMF(object):
             self.reference_order[subsection].append(name)
         refname[name] = data    # perhaps we should change to an list here
 
-    def get_reference_keywords (self, subsection=None):
-        """Method to query the keywords from (sub)reference(s).
-
-           If no subsection is supplied the main section will
-           be used.
-
-        """
-        if subsection is None:
-            reflist = self.reference
-        else:
-            if self.subreferences.has_key(subsection):
-                reflist = self.subreferences[subsection]
-            else:
-                return None
-        return reflist.keys()
-
-    def get_reference_values (self, keyword, subsection=None):
-        """Method to query values from reference."""
-        if subsection is None:
-            reflist = self.reference
-        else:
-            if self.subreferences.has_key(subsection):
-                reflist = self.subreferences[subsection]
-            else:
-                return None
-        if not reflist.has_key(keyword):
-            return None
-        return reflist[keyword]
-
-    def get_reference_pairs (self, subsection=None):
-        """This method is a big sucker.
-        
-           It returns you an zip with all keywords:value pairs in the
-           corresponding (sub)section.
-
-           Keeping subsection unfilled or setting to
-           "None" will give you the main reference section.
-
-        """
-        if subsection is None:
-            reflist = self.reference
-        else:
-            if self.subreferences.has_key(subsection):
-                reflist = self.subreferences[subsection]
-            else:
-                return None
-        pairs = zip(reflist.keys(), reflist.values()) 
-
-        return pairs
-
-    def get_subsection_names (self):
-        """Simply push back the names of the subreferences."""
-        return self.subreferences.keys()
-
-    def add_table (self, table=None, table_name=None, table_symbol=None):
-        """This method appends an table to the dataset.
-
-           If you supply an table object (simplefmf.FMFTable) this
-           object will get appended. If you supply nothing an
-           new object will be created.
-
-           As return value you will get the table object.
-
-        """
-        if table is None:
-            table = FMFTable(name=table_name, symbol=table_symbol)
-        elif not isinstance(table, simplefmf.FMFTable):
-            raise TypeError, "Please supply simplefmf.FMFTable or nothing."
-        if len(self.tables) > 0 \
-            and (table.name is None or table.symbol is None):
-            raise ValueError, "Multiple tables must have names and symbols."
-        if len(self.tableref_symbol) > 0:
-            self.tableref_symbol = {}
-        if len(self.tableref_name) > 0:
-            self.tableref_name = {}
-        self.tables.append(table)
-        return table
-
     def build_table_index (self):
         """This method rebuilds the table indexes."""
         self.tableref_symbol = {}
@@ -474,50 +365,6 @@ class SimpleFMF(object):
                 raise ValueError, "Multiple tables must have names and symbols."
             self.tableref_symbol[table.symbol] = i
             self.tableref_name[table.name] = i
-
-    def get_table_by_name (self, name):
-        """This method retrieves a table by it's name."""
-        if len(self.tableref_name) == 0:
-            self.build_table_index()
-        if name is not None and self.tableref_name.has_key(name):
-            table = self.tables[self.tableref_name[name]]
-            return table
-        else:
-            return None
-
-    def get_table_by_symbol (self, symbol):
-        """This method retrieves a table by it's symbol."""
-        if len(self.tableref_symbol) == 0:
-            self.build_table_index()
-        if symbol is not None and self.tableref_symbol.has_key(symbol):
-            table = self.tables[self.tableref_symbol[symbol]]
-            return table
-        else:
-            return None
-
-    def get_table_by_number (self, number):
-        """This method retrieves a table by it's number."""
-        if number is not None:
-            table = self.tables[number]
-            return table
-        else:
-            return None
-            
-    def get_table_names (self):
-        """This method returns the names of the tables."""
-        if len(self.tableref_name) == 0:
-            self.build_table_index()
-        return self.tableref_name.keys()
-
-    def get_table_symbols (self):
-        """This method returns the symbol of the tables."""
-        if len(self.tableref_symbol) == 0:
-            self.build_table_index()
-        return self.tableref_symbol.keys()
-
-    def get_tables (self):
-        """This method returns the tables itself."""
-        return self.tables
 
     #
     #   Methods for reading and writing
