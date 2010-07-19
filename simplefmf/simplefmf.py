@@ -31,8 +31,7 @@ class FMFTable(object):
         self._data_definition = []  #   Definitions including comments(!)
         self.data = []
         self._data_index = {}       #   Index to definitions excl. comments.
-        self._col_index = {}        #   Mapping definitions to rows
-        self._col_count = 0
+        self._col_count = 0         #   Number of current columns
         self._row_count = 0
         self.name = name
         self.symbol = symbol
@@ -41,7 +40,6 @@ class FMFTable(object):
         """Clear definition index."""
         if len(self._data_index) != 0:
             self._data_index = {}
-            self._col_index = {}
 
     def _rebuild_index(self):
         """Rebuild definition index.
@@ -52,13 +50,10 @@ class FMFTable(object):
 
         """
         self._clear_index()
-        counter = 0
         for value, key in enumerate(self._data_definition):
             if isinstance(key, dict):
                 key_list = key.keys()
                 self._data_index[key_list[0]] = value
-                self._col_index[key_list[0]] = counter
-                counter += 1
 
     def _set_data_definitions(self, definition):
         """Set the data definition.
@@ -93,7 +88,6 @@ class FMFTable(object):
             value = tmp_val
         if isinstance(value, dict):     # Not a comment
             key_list = value.keys()
-            self._col_index[key_list[0]] = len(self._data_index)
             self._data_index[key_list[0]] = len(self._data_definition)
         self._data_definition.append(value)
 
@@ -122,39 +116,8 @@ class FMFTable(object):
             for  i in xrange(len(row)):
                 self.data[i].append(row[i])
 
-    def get_data_by_row(self):
-        """Get a row of data. Can be used iterative."""
-        out = []
-        if len(self.data[0]) > self._row_count:
-            for i in xrange(len(self.data)):
-                tmp_data = self.data[i]
-                out.append(tmp_data[self._row_count])
-            self._row_count += 1
-            return out
-        else:
-            return None
-
-    data_row = property(get_data_by_row, add_data_row)
+    data_row = property(None, add_data_row)
         
-    def get_data_by_col_num(self, number):
-        """Get data column (number). Number starts at zero."""
-        return self.data[number]
-
-    def get_col_names(self):
-        """Get column names."""
-        out = self._data_index.keys()
-        return out
-
-    def get_definition_by_name(self, name):
-        """Get field-definition by name."""
-        value = self._data_definition[self._data_index[name]]
-        return value[name]
-
-    def get_data_by_col_name(self, name):
-        """Get data-column by name."""
-        col_num = self._col_index[name]
-        return self.data[col_num]
-
     def verify_consistency(self):
         """Verifys if the data structure is consistent.
 
@@ -166,11 +129,15 @@ class FMFTable(object):
 
         """
         if len(self._data_index) != len(self.data):
+            #   Does number of definitions match number
+            #   of columns
             return False
         else:
             if len(self.data) > 0:
                 testcount = len(self.data[0])
                 for i in xrange(1, len(self.data)):
+                    #   Check if all columns have the same length
+                    #   as column one
                     testcolumn = self.data[i]
                     if len(testcolumn) != testcount:
                         return False
@@ -249,9 +216,7 @@ class SimpleFMF(object):
         self.reference = {}
         self.subreference = None
         self.subreferences = {}
-        self.tables = []
-        self.tableref_symbol = {}
-        self.tableref_name = {}
+        self._tables = []
         self.section_order = []
         self.reference_order = {}
         self._base_reference_order = [ 'title', 'creator', 'created', 'place']
@@ -282,6 +247,7 @@ class SimpleFMF(object):
                 else:
                     created += offset_mask % (int(- time.timezone / 3600))
             except:
+                #   should be unknown
                 created = "1970-01-01 00:00:00+00:00"
         else:
             created = created
@@ -381,60 +347,6 @@ class SimpleFMF(object):
             self.reference_order[subsection].append(name)
         refname[name] = data    # perhaps we should change to an list here
 
-    def get_reference_keywords (self, subsection=None):
-        """Method to query the keywords from (sub)reference(s).
-
-           If no subsection is supplied the main section will
-           be used.
-
-        """
-        if subsection is None:
-            reflist = self.reference
-        else:
-            if self.subreferences.has_key(subsection):
-                reflist = self.subreferences[subsection]
-            else:
-                return None
-        return reflist.keys()
-
-    def get_reference_values (self, keyword, subsection=None):
-        """Method to query values from reference."""
-        if subsection is None:
-            reflist = self.reference
-        else:
-            if self.subreferences.has_key(subsection):
-                reflist = self.subreferences[subsection]
-            else:
-                return None
-        if not reflist.has_key(keyword):
-            return None
-        return reflist[keyword]
-
-    def get_reference_pairs (self, subsection=None):
-        """This method is a big sucker.
-        
-           It returns you an zip with all keywords:value pairs in the
-           corresponding (sub)section.
-
-           Keeping subsection unfilled or setting to
-           "None" will give you the main reference section.
-
-        """
-        if subsection is None:
-            reflist = self.reference
-        else:
-            if self.subreferences.has_key(subsection):
-                reflist = self.subreferences[subsection]
-            else:
-                return None
-        pairs = zip(reflist.keys(), reflist.values()) 
-
-        return pairs
-
-    def get_subsection_names (self):
-        """Simply push back the names of the subreferences."""
-        return self.subreferences.keys()
-
     def add_table (self, table=None, table_name=None, table_symbol=None):
         """This method appends an table to the dataset.
 
@@ -452,76 +364,10 @@ class SimpleFMF(object):
         if len(self.tables) > 0 \
             and (table.name is None or table.symbol is None):
             raise ValueError, "Multiple tables must have names and symbols."
-        if len(self.tableref_symbol) > 0:
-            self.tableref_symbol = {}
-        if len(self.tableref_name) > 0:
-            self.tableref_name = {}
-        self.tables.append(table)
+        self._tables.append(table)
         return table
 
-    def build_table_index (self):
-        """This method rebuilds the table indexes."""
-        self.tableref_symbol = {}
-        self.tableref_name = {}
-        number_of_tables = len(self.tables)
-
-        for i in range(number_of_tables):
-            table = self.tables[i]
-            if number_of_tables > 1 \
-                and (table.name() is None or table.symbol() is None):
-                self.tableref_symbol = {}
-                self.tableref_name = {}
-                raise ValueError, "Multiple tables must have names and symbols."
-            self.tableref_symbol[table.symbol] = i
-            self.tableref_name[table.name] = i
-
-    def get_table_by_name (self, name):
-        """This method retrieves a table by it's name."""
-        if len(self.tableref_name) == 0:
-            self.build_table_index()
-        if name is not None and self.tableref_name.has_key(name):
-            table = self.tables[self.tableref_name[name]]
-            return table
-        else:
-            return None
-
-    def get_table_by_symbol (self, symbol):
-        """This method retrieves a table by it's symbol."""
-        if len(self.tableref_symbol) == 0:
-            self.build_table_index()
-        if symbol is not None and self.tableref_symbol.has_key(symbol):
-            table = self.tables[self.tableref_symbol[symbol]]
-            return table
-        else:
-            return None
-
-    def get_table_by_number (self, number):
-        """This method retrieves a table by it's number."""
-        if number is not None:
-            table = self.tables[number]
-            return table
-        else:
-            return None
-            
-    def get_table_names (self):
-        """This method returns the names of the tables."""
-        if len(self.tableref_name) == 0:
-            self.build_table_index()
-        return self.tableref_name.keys()
-
-    def get_table_symbols (self):
-        """This method returns the symbol of the tables."""
-        if len(self.tableref_symbol) == 0:
-            self.build_table_index()
-        return self.tableref_symbol.keys()
-
-    def get_tables (self):
-        """This method returns the tables itself."""
-        return self.tables
-
-    #
-    #   Methods for reading and writing
-    #
+    table = property(None, add_table)
 
     def write_header (self, filehandle):
         """This method writes the headerline."""
@@ -580,12 +426,12 @@ class SimpleFMF(object):
             for name in self.section_order:
                 self.write_reference(filehandle,
                         self.subreferences[name], name)
-            tmp_table = self.tables[0]
-            if len(self.tables) > 1 or tmp_table.get_symbol() != None:
+            tmp_table = self._tables[0]
+            if len(self._tables) > 1 or tmp_table.get_symbol() != None:
                 filehandle.write("[*table definitions]\n")
-                for tmp_table in self.tables:
+                for tmp_table in self._tables:
                     tmp_table.write_table_entry(filehandle)
-            for tmp_table in self.tables:
+            for tmp_table in self._tables:
                 tmp_table.write_table_definition (filehandle, self.comment)
                 tmp_table.write_table_data(filehandle, self.delimeter)
             filehandle.close()
