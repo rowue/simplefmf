@@ -30,16 +30,11 @@ class FMFTable(object):
 
         self._data_definition = []  #   Definitions including comments(!)
         self.data = []
-        self._data_index = {}       #   Index to definitions excl. comments.
+        self._data_index = 0       #   Index to definitions excl. comments.
         self._col_count = 0         #   Number of current columns
         self._row_count = 0
         self.name = name
         self.symbol = symbol
-
-    def _clear_index(self):
-        """Clear definition index."""
-        if len(self._data_index) != 0:
-            self._data_index = {}
 
     def _rebuild_index(self):
         """Rebuild definition index.
@@ -49,11 +44,10 @@ class FMFTable(object):
            of objects.
 
         """
-        self._clear_index()
+        self._data_index = 0
         for value, key in enumerate(self._data_definition):
             if isinstance(key, dict):
-                key_list = key.keys()
-                self._data_index[key_list[0]] = value
+                self._data_index += 1
 
     def _set_data_definitions(self, definition):
         """Set the data definition.
@@ -87,16 +81,15 @@ class FMFTable(object):
             tmp_val[value] = description
             value = tmp_val
         if isinstance(value, dict):     # Not a comment
-            key_list = value.keys()
-            self._data_index[key_list[0]] = len(self._data_definition)
+            self._data_index += 1
         self._data_definition.append(value)
 
     def add_data_column(self, column):
         """Add a complete column of data."""
-        if self._col_count >= len(self._data_index):
+        if self._col_count >= self._data_index:
             raise RuntimeError("Too many columns. "
                 + " According to data definitions there should be "
-                + str(len(self._data_index)) + " columns instead "
+                + str(self._data_index) + " columns instead "
                 + " of " + str(self._col_count) + ".")
         else:
             self.data.append(column)
@@ -104,10 +97,10 @@ class FMFTable(object):
 
     def add_data_row(self, row):
         """Add a row of data."""
-        if len(row) != len(self._data_index):
+        if len(row) != self._data_index:
             raise RuntimeError("Too many columns in row. "
                 + " According to data definitions there should be "
-                + str(len(self._data_index)) + " columns per row instead "
+                + str(self._data_index) + " columns per row instead "
                 + " of " + str(self._col_count) + ".")
         else:
             if len(self.data) == 0:
@@ -116,39 +109,36 @@ class FMFTable(object):
             for  i in xrange(len(row)):
                 self.data[i].append(row[i])
 
-    data_row = property(None, add_data_row)
-        
-    def verify_consistency(self):
+    def verify_consistency(self, ref_length=None):
         """Verifys if the data structure is consistent.
 
            The number of columns have to be equal to the number
            of definitions and the number of rows has to be
-           the same on all columns.
+           the same on all columns (ref_length). If ref_length
+           is omitted the len of the first column will be used.
 
-           Return None if there is no data to verify.
+           Return False if there is no data to verify.
 
         """
-        if len(self._data_index) != len(self.data):
+        if self._data_index != len(self.data):
             #   Does number of definitions match number
             #   of columns
             return False
+        if len(self.data) > 0:
+            if ref_length is None:
+                ref_length = len(self.data[0])
+            return all([len(c)==ref_length for c in self.data])
         else:
-            if len(self.data) > 0:
-                testcount = len(self.data[0])
-                for i in xrange(1, len(self.data)):
-                    #   Check if all columns have the same length
-                    #   as column one
-                    testcolumn = self.data[i]
-                    if len(testcolumn) != testcount:
-                        return False
-                return True
-            else:
-                return None
+            return False
 
     def write_table_entry (self, filehandle):
         """Write table entry in table definitions on filehandle."""
         pattern = "%s: %s\n"
-        if self.name is not None and self.symbol is not None:
+        if self.name is None or self.symbol is None:
+            raise RuntimeError("You have to define " +
+                    "table name and table key if you use " +
+                    "more than one tables.")
+        else:
             filehandle.write(pattern % (self.name, self.symbol))
 
     def write_table_definition (self, filehandle, comment,
@@ -213,12 +203,12 @@ class SimpleFMF(object):
         self.fmflevel = 0
         self.delimeter = '\t'
         self.comment = ';'
-        self.reference = {}
-        self.subreference = None
-        self.subreferences = {}
+        self._reference = {}
+        self._subreference = None
+        self._subreferences = {}
         self._tables = []
-        self.section_order = []
-        self.reference_order = {}
+        self._section_order = []
+        self._reference_order = {}
         self._base_reference_order = [ 'title', 'creator', 'created', 'place']
         self._estimate_creation_date(created)   # self.reference[created]
         self._estimate_creator(creator)         # self.reference[creator]
@@ -226,7 +216,7 @@ class SimpleFMF(object):
         self.reference['title'] = title
         if place is None:
             place = "Earth, Universe"
-        self.reference['place'] = place
+        self._reference['place'] = place
     # Handling of basic reference data (charset, creator, place, created)
 
     def _estimate_charset (self):
@@ -251,7 +241,7 @@ class SimpleFMF(object):
                 created = "1970-01-01 00:00:00+00:00"
         else:
             created = created
-        self.reference['created'] = created
+        self._reference['created'] = created
 
     def _estimate_creator (self, creator):
         """Estimate the creator.
@@ -278,7 +268,7 @@ class SimpleFMF(object):
                     creator = "%s" % (username)
             except:
                 creator = 'unknown'
-        self.reference['creator'] = creator
+        self._reference['creator'] = creator
 
     # Handling of reference data - adding data from outside to memory
     # 
@@ -302,10 +292,10 @@ class SimpleFMF(object):
            The later checks for existence of the section.
 
         """
-        self.subreference = name
-        self.subreferences[name] = {}
-        self.section_order.append(name)
-        self.reference_order[name] = []
+        self._subreference = name
+        self._subreferences[name] = {}
+        self._section_order.append(name)
+        self._reference_order[name] = []
 
     def add_reference_entry (self, name, data):
         """Add reference entry.
@@ -313,12 +303,12 @@ class SimpleFMF(object):
            Use in conjunction with "add_reference_section".
 
         """
-        if self.subreference is None:
-            refname = self.reference
+        if self._subreference is None:
+            refname = self._reference
             self._base_reference_order.append(name)
         else:
-            refname = self.subreferences[self.subreference]
-            self.reference_order[self.subreference].append(name)
+            refname = self._subreferences[self._subreference]
+            self._reference_order[self._subreference].append(name)
         refname[name] = data    # perhaps we should change to an list here
 
     def add_subsection_reference_entry (self, name, data, subsection=None):
@@ -333,18 +323,18 @@ class SimpleFMF(object):
 
         """
         if subsection is None:
-            if self.subreference is None:
-                refname = self.reference
+            if self._subreference is None:
+                refname = self._reference
                 self._base_reference_order.append(name)
             else:
-                refname = self.subreferences[self.subreference]
-                self.reference_order[self.subreference].append(name)
+                refname = self._subreferences[self._subreference]
+                self._reference_order[self._subreference].append(name)
         else:
-            if not self.subreferences.has_key(subsection):
-                self.subreferences[subsection] = {}
-                self.section_order.append(subsection)
-            refname = self.subreferences[subsection]
-            self.reference_order[subsection].append(name)
+            if not self._subreferences.has_key(subsection):
+                self._subreferences[subsection] = {}
+                self._section_order.append(subsection)
+            refname = self._subreferences[subsection]
+            self._reference_order[subsection].append(name)
         refname[name] = data    # perhaps we should change to an list here
 
     def add_table (self, table=None, table_name=None, table_symbol=None):
@@ -366,8 +356,6 @@ class SimpleFMF(object):
             raise ValueError, "Multiple tables must have names and symbols."
         self._tables.append(table)
         return table
-
-    table = property(None, add_table)
 
     def write_header (self, filehandle):
         """This method writes the headerline."""
@@ -392,7 +380,7 @@ class SimpleFMF(object):
         else:
             pattern = "[%s]\n"
             filehandle.write(pattern % name)
-            liste = self.reference_order[name]
+            liste = self._reference_order[name]
         pattern = "%s: %s\n"
         for key in liste:
             if isinstance(section[key], basestring):
@@ -422,10 +410,10 @@ class SimpleFMF(object):
         filehandle = open(filename, 'w')
         if filehandle is not None:  #   TODO: exception handling
             self.write_header(filehandle)
-            self.write_reference(filehandle, self.reference)
-            for name in self.section_order:
+            self.write_reference(filehandle, self._reference)
+            for name in self._section_order:
                 self.write_reference(filehandle,
-                        self.subreferences[name], name)
+                        self._subreferences[name], name)
             tmp_table = self._tables[0]
             if len(self._tables) > 1 or tmp_table.get_symbol() != None:
                 filehandle.write("[*table definitions]\n")
