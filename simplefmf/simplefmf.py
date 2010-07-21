@@ -213,7 +213,7 @@ class SimpleFMF(object):
         self._estimate_creation_date(created)   # self.reference[created]
         self._estimate_creator(creator)         # self.reference[creator]
         self._estimate_charset()                # self.charset
-        self.reference['title'] = title
+        self._reference['title'] = title
         if place is None:
             place = "Earth, Universe"
         self._reference['place'] = place
@@ -351,7 +351,7 @@ class SimpleFMF(object):
             table = FMFTable(name=table_name, symbol=table_symbol)
         elif not isinstance(table, simplefmf.FMFTable):
             raise TypeError, "Please supply simplefmf.FMFTable or nothing."
-        if len(self.tables) > 0 \
+        if len(self._tables) > 0 \
             and (table.name is None or table.symbol is None):
             raise ValueError, "Multiple tables must have names and symbols."
         self._tables.append(table)
@@ -415,7 +415,7 @@ class SimpleFMF(object):
                 self.write_reference(filehandle,
                         self._subreferences[name], name)
             tmp_table = self._tables[0]
-            if len(self._tables) > 1 or tmp_table.get_symbol() != None:
+            if len(self._tables) > 1 or tmp_table.symbol != None:
                 filehandle.write("[*table definitions]\n")
                 for tmp_table in self._tables:
                     tmp_table.write_table_entry(filehandle)
