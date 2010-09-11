@@ -62,6 +62,8 @@ class FMFTable(object):
     data_definitions = property(lambda self: self._data_definition,
                                 _set_data_definitions)
 
+    table_entry = property(lambda self: "%s: %s" % (self.name, self.symbol))
+
     def add_data_definition(self, value, description=None):
         """Add an data definition.
         
@@ -133,13 +135,38 @@ class FMFTable(object):
 
     def write_table_entry (self, filehandle):
         """Write table entry in table definitions on filehandle."""
-        pattern = "%s: %s\n"
         if self.name is None or self.symbol is None:
             raise RuntimeError("You have to define " +
                     "table name and table key if you use " +
                     "more than one tables.")
         else:
-            filehandle.write(pattern % (self.name, self.symbol))
+            filehandle.write("%s\n" % self.table_entry)
+
+    def table_definition (self, comment, comments=True):
+        """Returns an list of strings containing the table definition. 
+
+           This can be written to STDOUT, filehandle or used
+           otherwise. Comments will be supressed if
+           comments is set to false.
+
+        """
+        definition_list = []
+        pattern = "%s: %s"
+        if self.symbol is not None:
+            definition_list.append(pattern % ("[*data definitions", 
+                            self.symbol + "]"))
+        else:
+            definition_list.append("[*data definitions]")
+        if comments:
+            commpattern = "%s %s"
+        for i in self._data_definition:
+            if isinstance(i, dict):
+                keylist = i.keys()
+                key = keylist[0]
+                definition_list.append(pattern % (key, i[key]))
+            elif comments:
+                definition_list.append(commpattern % (comment, repr(i)))
+        return definition_list
 
     def write_table_definition (self, filehandle, comment,
                                 comments=True):
@@ -148,30 +175,23 @@ class FMFTable(object):
            Comments will be suppressed if comments is set to false.
 
         """
-        pattern = "%s: %s\n"
-        if self.symbol is not None:
-            filehandle.write(pattern % ("[*data definitions", 
-                            self.symbol + "]"))
-        else:
-            filehandle.write("[*data definitions]\n")
-        if comments:
-            commpattern = "%s %s\n"
-        for i in self._data_definition:
-            if isinstance(i, dict):
-                keylist = i.keys()
-                key = keylist[0]
-                filehandle.write(pattern % (key, i[key]))
-            elif comments:
-                filehandle.write(commpattern % (comment, repr(i)))
+        definition_list = self.table_definition (comment, comments=True)
+        filehandle.write("\n".join(definition_list) + "\n")
 
-    def write_table_data (self, filehandle, delimeter):
-        """Write table data to filehandle."""
-        pattern = "%s: %s\n"
+    def table_data (self, delimeter):
+        """Returns an list of the data-rows.
+        
+           Yes, I know: using a list for this sucks a lot.
+           But we change it later (and know all about provisorics.
+        """
+        data_list = []
+        pattern = "%s: %s"
         joinpattern = delimeter
+
         if self.symbol is not None:
-            filehandle.write(pattern % ("[*data", self.symbol + "]"))
+            data_list.append(pattern % ("[*data", self.symbol + "]"))
         else:
-            filehandle.write("[*data]\n")
+            data_list.append("[*data]")
         if delimeter.lower() == "semicolon":
             joinpattern = ";"
         elif delimeter.lower() == "whitespace":
@@ -184,7 +204,14 @@ class FMFTable(object):
             outbuf = joinpattern.join(tmpbuf)
             if delimeter.lower() == "whitespace":
                 outbuf.expandtabs(4)
-            filehandle.write(outbuf + "\n")
+            data_list.append(outbuf)
+        return data_list
+
+    def write_table_data (self, filehandle, delimeter):
+        """Write table data to filehandle."""
+
+        data_list = self.table_data (delimeter)
+        filehandle.write("\n".join(data_list) + "\n")
                 
 class SimpleFMF(object):
 
@@ -357,38 +384,47 @@ class SimpleFMF(object):
         self._tables.append(table)
         return table
 
-    def write_header (self, filehandle):
-        """This method writes the headerline."""
-        pattern = "%s -*- %s; %s; %s -*-\n"
+    def headerline (self):
+        """Returns an list of strings containig the header-lines."""
+        header_list = []
+        pattern = "%s -*- %s; %s; %s -*-"
         deli = repr(self.delimeter)
-        filehandle.write(pattern % (self.comment,
+        header_list.append(pattern % (self.comment,
             "fmf-version: " + repr(self.fmfversion),
             "coding: " + self.charset,
             "delimeter: " + deli.replace("'","")))
-        pattern = "%s %s\n"
-        filehandle.write(pattern % (self.comment,
+
+        pattern = "%s %s"
+        header_list.append(pattern % (self.comment,
             "Full-Metadata Format as described in " +
                         "http://arxiv.org/abs/0904.1299"))
-        filehandle.write(pattern % (self.comment,
+        header_list.append(pattern % (self.comment,
             "written by simplefmf " + str(self.version) + " (python)"))
+        return header_list
 
-    def write_reference (self, filehandle, section, name=None):
-        """This method writes the reference sections."""
+    def write_header (self, filehandle):
+        """This method writes the headerline."""
+        header_list = self.headerline()
+        filehandle.write("\n".join(header_list) + "\n")
+
+    def reference_line (self, section, name=None):
+        """Return a list with the section-selected meta-data."""
+        meta_list = []
         if name is None:    #   main section
-            filehandle.write("[*reference]\n")
+            meta_list.append("[*reference]")
             liste = self._base_reference_order
         else:
-            pattern = "[%s]\n"
-            filehandle.write(pattern % name)
+            pattern = "[%s]"
+            meta_list.append(pattern % name)
             liste = self._reference_order[name]
-        pattern = "%s: %s\n"
+        pattern = "%s: %s"
         for key in liste:
             if isinstance(section[key], basestring):
-                filehandle.write(pattern % (key, section[key]))
+                meta_list.append(pattern % (key, section[key]))
             elif isinstance(section[key], dict) \
                 or isinstance(section[key], list):
                 seperator=", "
-                filehandle.write(pattern % key)
+                meta_list.append(pattern % key)
                 holder = []
                 if isinstance(section[key], dict):
                     tmp_pattern = "%s = %s"
@@ -399,9 +435,15 @@ class SimpleFMF(object):
                 else:
                     for i in section[key]:
                         holder.append(repr(i))
-                filehandle.write(pattern % (key, seperator.join(holder)))
+                meta_list.append(pattern % (key, seperator.join(holder)))
             else:
-                filehandle.write(pattern % (key, repr(section[key])))
+                meta_list.append(pattern % (key, repr(section[key])))
+        return meta_list
+
+    def write_reference (self, filehandle, section, name=None):
+        """This method writes the reference sections."""
+        meta_list = self.reference_line(section, name)
+        filehandle.write("\n".join(meta_list) + "\n")
 
     def write_to_file (self, filename):
         """This method writes the data in an (FMF-)file."""
