@@ -1,3 +1,31 @@
+class FMFDataDefinition(object):
+
+    """Class for managing the individual table-definitions.
+    """
+
+    def __init__(self, name=None, definition=None, mask=None):
+        self.name=name
+        self.definition=definition
+        self.mask=mask
+
+    def get_definition(self):
+        """Return the definition.
+
+        If the definition includes a comment, only the
+        comment is returned, else a string name: definition 
+        is returned.
+        
+        """
+        # Why use a "get-function"?
+        # At first: we (and people which like to use this module)
+        # don't have to query this on their own.
+        # If anyone besides us ask for this code he/she don't have
+        # ti build this on his/her own.
+        if self.name is not None and self.definition is not None:
+            return "%s: %s" % (self.name, self.definition)
+        else:
+            return None
+
 class FMFTable(object):
 
 
@@ -45,18 +73,18 @@ class FMFTable(object):
 
         """
         self._data_index = 0
-        for value, key in enumerate(self._data_definition):
-            if isinstance(key, dict):
+        for definition in (self._data_definition):
+            if isinstance(definition, FMFDataDefinition):
                 self._data_index += 1
 
-    def _set_data_definitions(self, definition):
+    def _set_data_definitions(self, definitions):
         """Set the data definition.
         
            This method is intended to set up the
            whole set of definitions in an bunch.
 
         """
-        self._data_definition = definition
+        self._data_definition = definitions
         self._rebuild_index()
 
     data_definitions = property(lambda self: self._data_definition,
@@ -64,27 +92,49 @@ class FMFTable(object):
 
     table_entry = property(lambda self: "%s: %s" % (self.name, self.symbol))
 
-    def add_data_definition(self, value, description=None):
+    def add_data_definition(self, value, description=None, mask=None):
         """Add an data definition.
         
            This method is intended to declare
            definitions with iterative calls.
 
            You can call this method either direct with
-           an dict (name:definition) or supply two
+           a dict (name:definition) or supply two
            strings where the first is the name, the
            second is the definition ("U1", "mV").
-           You may even let the description blank,
-           which would be charged as comment.
+           You can also supply a mask to define the way
+           how the values in the table are printed.
+           If you don't supply it, a predefined default
+           will be used (%.3e for floats, %0d for int).
+
+           If you don't supply a definition (in either way),
+           the entry will be charged as comment.
 
         """
-        if description is not None:
-            tmp_val = {}
-            tmp_val[value] = description
-            value = tmp_val
-        if isinstance(value, dict):     # Not a comment
+        # It might look a little strange to store 
+        # two different items in data_definitions
+        # comments and FMFDataDefintion.
+        # But FMFDataDefinition are distinct from
+        # comments so comments should not reside in
+        # the FMFDataDefinition object.
+        name=None
+        if description is not None or isinstance(value, dict):
             self._data_index += 1
-        self._data_definition.append(value)
+            if description is not None:
+                data_definition=FMFDataDefinition(name=value, 
+                        definition=description)
+            else:
+                name=value.keys()[0]
+                description=value[name]
+                data_definition=FMFDataDefinition(name=name, 
+                        definition=description)
+            if mask is not None:
+                data_definition.mask = mask
+            self._data_definition.append(data_definition)
+        else:
+            if isinstance(value, FMFDataDefinition):
+                self._data_index += 1
+            self._data_definition.append(value)
 
     def add_data_column(self, column):
         """Add a complete column of data."""
@@ -160,12 +210,11 @@ class FMFTable(object):
         if comments:
             commpattern = "%s %s"
         for i in self._data_definition:
-            if isinstance(i, dict):
-                keylist = i.keys()
-                key = keylist[0]
-                definition_list.append(pattern % (key, i[key]))
+            if isinstance(i, FMFDataDefinition):
+                definition_list.append(i.get_definition())
             elif comments:
-                definition_list.append(commpattern % (comment, repr(i)))
+                definition_list.append(commpattern % (comment, i))
+        #        definition_list.append(commpattern % (comment, repr(i)))
         return definition_list
 
     def write_table_definition (self, filehandle, comment,
@@ -178,6 +227,14 @@ class FMFTable(object):
         definition_list = self.table_definition (comment, comments=True)
         filehandle.write("\n".join(definition_list) + "\n")
 
+    def _build_mask_list(self):
+        """Builds the list of masks (None results to defaults)."""
+        mask_list=[]
+        for i in (self._data_definition):
+            if isinstance(i, FMFDataDefinition):
+                mask_list.append(i.mask)
+        return mask_list
+
     def table_data (self, delimeter):
         """Returns an list of the data-rows.
         
@@ -187,6 +244,9 @@ class FMFTable(object):
         data_list = []
         pattern = "%s: %s"
         joinpattern = delimeter
+        mask_list=self._build_mask_list()
+        index_count_row=len(self.data[0])
+        index_count_col=len(self.data)
 
         if self.symbol is not None:
             data_list.append(pattern % ("[*data", self.symbol + "]"))
@@ -196,11 +256,23 @@ class FMFTable(object):
             joinpattern = ";"
         elif delimeter.lower() == "whitespace":
             joinpattern = "\t"  #   do st nasty
-        for i in range(len(self.data[0])):
+        for i in xrange(index_count_row):
             tmpbuf = []
-            for j in range(len(self.data)):
-                a = self.data[j]           # This line sucks
-                tmpbuf.append(repr(a[i]))   
+            for j in xrange(index_count_col):
+                a = self.data[j][i]           # This line sucks
+                if mask_list[j] is not None:
+                    tmpbuf.append(mask_list[j] % a)
+                elif isinstance(a, float):
+                    tmpbuf.append("%.3e" % a)
+                elif isinstance(a, int):
+                    tmpbuf.append("%0d" % a)
+                elif isinstance(a, bool):
+                    if a:
+                        tmpbuf.append("True")
+                    else:
+                        tmpbuf.append("False")
+                else:
+                    tmpbuf.append("%s" % a)
             outbuf = joinpattern.join(tmpbuf)
             if delimeter.lower() == "whitespace":
                 outbuf.expandtabs(4)
@@ -209,7 +281,6 @@ class FMFTable(object):
 
     def write_table_data (self, filehandle, delimeter):
         """Write table data to filehandle."""
-
         data_list = self.table_data (delimeter)
         filehandle.write("\n".join(data_list) + "\n")
                 
