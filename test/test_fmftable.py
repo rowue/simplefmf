@@ -49,27 +49,20 @@ class TestTableConsistency():
         self.table.add_data_definition('Acceleration Voltage','U_2(U_1) [kV]')
         self.table.add_data_definition('some stupid comment')
 
+    def test_consistency_overcols(self):
+        self.table.data=[(1,2,3),(1,2,3), (3,2,1)]
+        assert_false(self.table.verify_consistency())
 
-#
-#o.set_data([(1,2,3),(1,2,3), (3,2,1)])
-#print o.get_data()
-#if o.verify_consistency():
-#    raise TypeError, "Fuck"
-#o.set_data([(1,2,3),(1,2)])
-#print o.get_data()
-#if o.verify_consistency():
-#    raise TypeError, "Fuck"
-#o.set_data([(1,2,3),(3,2,1)])
-#print o.get_data()
-#if not o.verify_consistency():
-#    raise TypeError, "Fuck"
-#b = o.get_col_names()
-#print b
-#print b[0]
-#print o.get_data_index()
-#print o.get_data_by_col_name(b[0])
-#c = o.get_data_by_row()
-#while c != None:
-#    print c
-#    c = o.get_data_by_row()
-#print o.get_definition_by_name(b[0])
+    def test_consistency_uneqalrows(self):
+        self.table.data=[(1,2,3),(1,2)]
+        assert_false(self.table.verify_consistency())
+
+    def test_consistency_ok(self):
+        self.table.data=[(1,2,3),(1,2,3)]
+        assert_true(self.table.verify_consistency())
+
+# class TestTableMask():
+#    def setUp(self):
+        self.table=FMFTable(name="Test", symbol="\tau")
+        self.table.add_data_definition({'Bias Voltage':'U_1 [mV]'})
+        self.table.add_data_definition('Acceleration Voltage','U_2(U_1) [kV]')
