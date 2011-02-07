@@ -1,7 +1,6 @@
+# -*- coding: utf-8; -*-
 class FMFDataDefinition(object):
-
-    """Class for managing the individual table-definitions.
-    """
+    """Class for managing the individual table-definitions."""
 
     def __init__(self, name=None, definition=None, mask=None):
         self.name=name
@@ -26,14 +25,11 @@ class FMFDataDefinition(object):
         else:
             return None
 
+
 class FMFTable(object):
+    """Class for managing the individual data-tables."""
 
-
-    """Class for managing the individual data-tables.
-
-    """
     def __init__(self, name=None, symbol=None):
-
         # Structure as follows:
         # Name and letter holds the name an letters of the table.
         # This is not necessary if you use one table but it's needed
@@ -239,7 +235,7 @@ class FMFTable(object):
         """Returns an list of the data-rows.
         
            Yes, I know: using a list for this sucks a lot.
-           But we change it later (and know all about provisorics.
+           But we change it later (and know all about provisorics).
         """
         data_list = []
         pattern = "%s: %s"
@@ -259,23 +255,18 @@ class FMFTable(object):
         for i in xrange(index_count_row):
             tmpbuf = []
             for j in xrange(index_count_col):
+                fmt = "%s"
                 a = self.data[j][i]           # This line sucks
                 if mask_list[j] is not None:
-                    tmpbuf.append(mask_list[j] % a)
+                    fmt = mask_list[j]
                 elif isinstance(a, float):
-                    tmpbuf.append("%.3e" % a)
-                elif isinstance(a, int):
-                    tmpbuf.append("%0d" % a)
-                elif isinstance(a, bool):
-                    if a:
-                        tmpbuf.append("True")
-                    else:
-                        tmpbuf.append("False")
-                else:
-                    tmpbuf.append("%s" % a)
+                    fmt = "%.3e"
+                elif isinstance(a, int) and not isinstance(a, bool):
+                    fmt = "%0d"
+                tmpbuf.append(fmt % a)
             outbuf = joinpattern.join(tmpbuf)
             if delimeter.lower() == "whitespace":
-                outbuf.expandtabs(4)
+                outbuf=outbuf.expandtabs(4)
             data_list.append(outbuf)
         return data_list
 
@@ -283,10 +274,9 @@ class FMFTable(object):
         """Write table data to filehandle."""
         data_list = self.table_data (delimeter)
         filehandle.write("\n".join(data_list) + "\n")
-                
+
+
 class SimpleFMF(object):
-
-
     """Simple implementation of the "Full-Metadata Format".
     
        The Format is desribed in http://arxiv.org/abs/0904.1299.
