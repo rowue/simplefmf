@@ -23,8 +23,6 @@ class TestTableDefinitions():
         self.table.add_data_definition({'Bias Voltage':'U_1 [mV]'})
         self.table.add_data_definition('Acceleration Voltage','U_2(U_1) [kV]')
         self.table.add_data_definition('some stupid comment')
-        a=FMFDataDefinition(name="Beam Current", definition="I_B(U_1) [mA]")
-        self.table.add_data_definition(a)
 
     def test_data_definition_types(self):
         data_list = self.table.data_definitions
@@ -32,7 +30,6 @@ class TestTableDefinitions():
         assert_true(isinstance(data_list[1], FMFDataDefinition))
         assert_false(isinstance(data_list[2], FMFDataDefinition))
         assert_true(isinstance(data_list[2], str))
-        assert_true(isinstance(data_list[3], FMFDataDefinition))
 
     def test_data_definition_out(self):
         data_list = self.table.table_definition(";")
@@ -40,7 +37,6 @@ class TestTableDefinitions():
         eq_(data_list[1], "Bias Voltage: U_1 [mV]")
         eq_(data_list[2], "Acceleration Voltage: U_2(U_1) [kV]")
         eq_(data_list[3], "; some stupid comment")
-        eq_(data_list[4], "Beam Current: I_B(U_1) [mA]")
 
     def test_data_definition_set(self):
         a=[]

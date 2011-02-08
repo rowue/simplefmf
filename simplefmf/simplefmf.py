@@ -3,27 +3,23 @@ class FMFDataDefinition(object):
     """Class for managing the individual table-definitions."""
 
     def __init__(self, name=None, definition=None, mask=None):
-        self.name=name
-        self.definition=definition
+        if name is None or definition is None:
+            raise ValueError, "You have to specify name and definition."
+        self._name=name
+        self._definition=definition
         self.mask=mask
 
-    def get_definition(self):
-        """Return the definition.
+    definition_entry = property(lambda self: "%s: %s" % 
+                                    (self._name, self._definition))
 
-        If the definition includes a comment, only the
-        comment is returned, else a string name: definition 
-        is returned.
-        
-        """
-        # Why use a "get-function"?
-        # At first: we (and people which like to use this module)
-        # don't have to query this on their own.
-        # If anyone besides us ask for this code he/she don't have
-        # ti build this on his/her own.
-        if self.name is not None and self.definition is not None:
-            return "%s: %s" % (self.name, self.definition)
-        else:
-            return None
+    def default_mask(self, data):
+        """Sets mask to default depending on data-type."""
+        fmt = "%s"
+        if isinstance(data, float):
+            fmt = "%.3e"
+        elif isinstance(data, int) and not isinstance(data, bool):
+            fmt ="%0d"
+        self.mask = fmt
 
 
 class FMFTable(object):
@@ -128,8 +124,6 @@ class FMFTable(object):
                 data_definition.mask = mask
             self._data_definition.append(data_definition)
         else:
-            if isinstance(value, FMFDataDefinition):
-                self._data_index += 1
             self._data_definition.append(value)
 
     def add_data_column(self, column):
@@ -207,7 +201,7 @@ class FMFTable(object):
             commpattern = "%s %s"
         for i in self._data_definition:
             if isinstance(i, FMFDataDefinition):
-                definition_list.append(i.get_definition())
+                definition_list.append(i.definition_entry)
             elif comments:
                 definition_list.append(commpattern % (comment, i))
         #        definition_list.append(commpattern % (comment, repr(i)))
@@ -228,7 +222,7 @@ class FMFTable(object):
         mask_list=[]
         for i in (self._data_definition):
             if isinstance(i, FMFDataDefinition):
-                mask_list.append(i.mask)
+                mask_list.append(i)
         return mask_list
 
     def table_data (self, delimeter):
@@ -240,9 +234,9 @@ class FMFTable(object):
         data_list = []
         pattern = "%s: %s"
         joinpattern = delimeter
-        mask_list=self._build_mask_list()
-        index_count_row=len(self.data[0])
-        index_count_col=len(self.data)
+        mask_list = self._build_mask_list()
+        index_count_row = len(self.data[0])
+        index_count_col = len(self.data)
 
         if self.symbol is not None:
             data_list.append(pattern % ("[*data", self.symbol + "]"))
@@ -255,18 +249,15 @@ class FMFTable(object):
         for i in xrange(index_count_row):
             tmpbuf = []
             for j in xrange(index_count_col):
-                fmt = "%s"
                 a = self.data[j][i]           # This line sucks
-                if mask_list[j] is not None:
-                    fmt = mask_list[j]
-                elif isinstance(a, float):
-                    fmt = "%.3e"
-                elif isinstance(a, int) and not isinstance(a, bool):
-                    fmt = "%0d"
-                tmpbuf.append(fmt % a)
+                if i == 0 and mask_list[j].mask is None:
+                    # if this is the first line and the mask is not
+                    # defined.
+                    mask_list[j].default_mask(a)
+                tmpbuf.append(mask_list[j].mask % a)
             outbuf = joinpattern.join(tmpbuf)
             if delimeter.lower() == "whitespace":
-                outbuf=outbuf.expandtabs(4)
+                outbuf = outbuf.expandtabs(4)
             data_list.append(outbuf)
         return data_list
 
