@@ -143,7 +143,7 @@ class FMFTable(object):
             raise RuntimeError("Too many columns in row. "
                 + " According to data definitions there should be "
                 + str(self._data_index) + " columns per row instead "
-                + " of " + str(self._col_count) + ".")
+                + " of " + str(len(row)) + ".")
         else:
             if len(self.data) == 0:
                 for  i in xrange(len(row)):
