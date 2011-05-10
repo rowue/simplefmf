@@ -29,15 +29,62 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__id__ = "$Id$"
-__author__ = "$Author$"
-__version__ = "$Revision$"
+__id__ = "$Id: __init__.py 77 2011-05-10 09:14:35Z rowue $"
+__author__ = "$Author: rowue $"
+__version__ = "$Revision: 77 $"
 
 import nose
-from nose.tools import raises, assert_almost_equal, ok_, eq_, assert_true, \
+import re
+from nose.tools import assert_almost_equal, ok_, eq_, assert_true, \
         assert_false
 # test to check FMFTable
-from simplefmf import FMFTable, FMFDataDefinition
+from simplefmf import SimpleFMF, FMFTable, FMFDataDefinition
+
+class TestSimpleFMFDefault():
+    def setUp(self):
+        self.simple_fmf=SimpleFMF()
+
+    def test_default_title(self):
+        eq_(self.simple_fmf._reference['title'], "-")
+
+    def test_default_place(self):
+        eq_(self.simple_fmf._reference['place'], "Earth, Universe")
+
+    def test_default_reference_section(self):
+        list=self.simple_fmf.reference_line(self.simple_fmf._reference)
+        test_list=[
+                "[*reference]",
+                "title: -",
+                "creator: " + self.simple_fmf._reference['creator'],
+                "created: " + self.simple_fmf._reference['created'],
+                "place: Earth, Universe"]
+        eq_(list, test_list)
+
+    def test_default_header(self):
+        header_vals=re.compile(";\s-\*-\s(.*)\s-\*-")
+        list=self.simple_fmf.headerline()
+        
+        # coding=re.compile("; fmf-version: \d\.\d; coding:\s[^;];
+        # eq_(list[0], "[*reference]")
+        # eq_(list[1], "Full-Metadata Format as described in " +
+        #              "http://arxiv.org/abs/0904.1299")
+        # eq_(list[2], "place: Earth, Universe")
+
+class TestSimpleFMF():
+    def setUp(self):
+        self.simple_fmf=SimpleFMF()
+
+    def test_default_title(self):
+        eq_(self.simple_fmf._reference['title'], "-")
+
+    def test_default_place(self):
+        eq_(self.simple_fmf._reference['place'], "Earth, Universe")
+
+    def test_default_reference_section(self):
+        list=self.simple_fmf.reference_line(self.simple_fmf._reference)
+        eq_(list[0], "[*reference]")
+        eq_(list[1], "title: -")
+        eq_(list[4], "place: Earth, Universe")
 
 class TestTableBasic():
     def setUp(self):
