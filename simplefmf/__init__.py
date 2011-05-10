@@ -30,7 +30,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __id__ = "$Id$"
-__author__ = "$Author"
+__author__ = "$Author$"
 __version__ = "$Revision$"
 
 u"""
