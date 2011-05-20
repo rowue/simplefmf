@@ -444,8 +444,7 @@ class SimpleFMF(object):
                 self._reference_order[self._subreference].append(name)
         else:
             if not self._subreferences.has_key(subsection):
-                self._subreferences[subsection] = {}
-                self._section_order.append(subsection)
+                self.add_reference_section (subsection)
             refname = self._subreferences[subsection]
             self._reference_order[subsection].append(name)
         refname[name] = data    # perhaps we should change to an list here
