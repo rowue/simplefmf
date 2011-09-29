@@ -288,7 +288,10 @@ class FMFTable(object):
                     # if this is the first line and the mask is not
                     # defined.
                     mask_list[j].default_mask(a)
-                tmpbuf.append(mask_list[j].mask % a)
+                if mask_list[j].mask != "repr":
+                    tmpbuf.append(mask_list[j].mask % a)
+                else:
+                    tmpbuf.append(repr(a))
             outbuf = joinpattern.join(tmpbuf)
             if delimeter.lower() == "whitespace":
                 outbuf = outbuf.expandtabs(4)
