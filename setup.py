@@ -8,7 +8,7 @@ setup(name='simplefmf',
     http://arxiv.org/abs/0904.1299 
     
     This module gives a hackish way to write it.""",
-    version='0.1',
+    version='0.1.1',
     author="Rolf Würdemann",
     author_email="Rolf.Wuerdemann@fmf.uni-freiburg.de",
     maintainer="Rolf Würdemann",
