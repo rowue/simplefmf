@@ -1,0 +1,57 @@
+# -*- coding: utf-8; -*-
+Copyright (c) 2011, Rectorate of the University of Freiburg
+All rights reserved.
+
+simplefmf is a small module to write full metadata format
+(fmfi) files. It is easy to use and gives a very lightwight
+way to write fmf files as described in
+http://arxiv.org/abs/0904.1299.
+
+Since simplefmf is simple it does only provide very small
+sanity and syntax checks. So it is up to you to write
+propper fmf files.
+
+Installation:
+
+Prerequisites:
+=============
+
+To install simplefmf you need:
+
+   * python (2.4 is minimum)
+   * setuptools
+
+if you also like to run the tests you need:
+
+   * nose
+
+Running the tests:
+=================
+
+To run the tests simply run:
+
+   "python setup.py nosetests"
+
+if you like to get more output run:
+
+   "python setup.py nosetests --verbosity=2"
+
+User-specific installation:
+==========================
+
+To install simplefmf in your home dir,
+you should run:
+
+   "python setup.py install --user"
+
+And take care that your PYTHONPATH includes
+the approbiate directory.
+
+System-wide installation:
+========================
+
+For a system-wide installation (permission is
+needed) you run:
+
+   "python setup.py install"
+
