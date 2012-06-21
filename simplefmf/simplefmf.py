@@ -464,7 +464,7 @@ class SimpleFMF(object):
         """
         if table is None:
             table = FMFTable(name=table_name, symbol=table_symbol)
-        elif not isinstance(table, simplefmf.FMFTable):
+        elif not isinstance(table, FMFTable):
             raise TypeError, "Please supply simplefmf.FMFTable or nothing."
         if len(self._tables) > 0 \
             and (table.name is None or table.symbol is None):
