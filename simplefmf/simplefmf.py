@@ -43,7 +43,7 @@ class FMFDataDefinition(object):
         self._definition=definition
         self.mask=mask
 
-    definition_entry = property(lambda self: "%s: %s" % 
+    definition_entry = property(lambda self: "%s: %s" %
                                     (self._name, self._definition))
 
     def default_mask(self, data):
@@ -64,10 +64,10 @@ class FMFTable(object):
         # Name and letter holds the name an letters of the table.
         # This is not necessary if you use one table but it's needed
         # if you use more of them.
-        # 
+        #
         # _data_definition holds a collection of the definitions
         # of the individual data rows including comments.
-        # At this time we use two indexes - one for the 
+        # At this time we use two indexes - one for the
         # mapping of row to definition and one for mapping
         # definition to data row. The last might vanish if we
         # use a seperate class for definitions.
@@ -105,7 +105,7 @@ class FMFTable(object):
 
     def _set_data_definitions(self, definitions):
         """Set the data definition.
-        
+
            This method is intended to set up the
            whole set of definitions in an bunch.
 
@@ -120,7 +120,7 @@ class FMFTable(object):
 
     def add_data_definition(self, value, description=None, mask=None):
         """Add an data definition.
-        
+
            This method is intended to declare
            definitions with iterative calls.
 
@@ -137,7 +137,7 @@ class FMFTable(object):
            the entry will be charged as comment.
 
         """
-        # It might look a little strange to store 
+        # It might look a little strange to store
         # two different items in data_definitions
         # comments and FMFDataDefintion.
         # But FMFDataDefinition are distinct from
@@ -147,12 +147,12 @@ class FMFTable(object):
         if description is not None or isinstance(value, dict):
             self._data_index += 1
             if description is not None:
-                data_definition=FMFDataDefinition(name=value, 
+                data_definition=FMFDataDefinition(name=value,
                         definition=description)
             else:
                 name=value.keys()[0]
                 description=value[name]
-                data_definition=FMFDataDefinition(name=name, 
+                data_definition=FMFDataDefinition(name=name,
                         definition=description)
             if mask is not None:
                 data_definition.mask = mask
@@ -217,7 +217,7 @@ class FMFTable(object):
             filehandle.write("%s\n" % self.table_entry)
 
     def table_definition (self, comment, comments=True):
-        """Returns an list of strings containing the table definition. 
+        """Returns an list of strings containing the table definition.
 
            This can be written to STDOUT, filehandle or used
            otherwise. Comments will be supressed if
@@ -227,7 +227,7 @@ class FMFTable(object):
         definition_list = []
         pattern = "%s: %s"
         if self.symbol is not None:
-            definition_list.append(pattern % ("[*data definitions", 
+            definition_list.append(pattern % ("[*data definitions",
                             self.symbol + "]"))
         else:
             definition_list.append("[*data definitions]")
@@ -244,7 +244,7 @@ class FMFTable(object):
     def write_table_definition (self, filehandle, comment,
                                 comments=True):
         """Write the table definitions to filehandle.
-        
+
            Comments will be suppressed if comments is set to false.
 
         """
@@ -261,7 +261,7 @@ class FMFTable(object):
 
     def table_data (self, delimeter):
         """Returns an list of the data-rows.
-        
+
            Yes, I know: using a list for this sucks a lot.
            But we change it later (and know all about provisorics).
         """
@@ -306,7 +306,7 @@ class FMFTable(object):
 
 class SimpleFMF(object):
     """Simple implementation of the "Full-Metadata Format".
-    
+
        The Format is desribed in http://arxiv.org/abs/0904.1299.
        "Simple" means there is NO verification of entered units and
        NO searching methods.  Furthermore you will worked on
@@ -346,7 +346,7 @@ class SimpleFMF(object):
         if created is None:
             try:
                 import time
-                created = time.strftime('%Y-%m-%d %H:%M:%S') 
+                created = time.strftime('%Y-%m-%d %H:%M:%S')
                 offset_mask = "%+03d:00"
                 if time.daylight != 0:
                     created += offset_mask % (int(- time.altzone / 3600))
@@ -361,7 +361,7 @@ class SimpleFMF(object):
 
     def _estimate_creator (self, creator):
         """Estimate the creator.
-        
+
            Support for setting the E-Mail was dropped.
         """
         if creator is None:
@@ -387,7 +387,7 @@ class SimpleFMF(object):
         self._reference['creator'] = creator
 
     # Handling of reference data - adding data from outside to memory
-    # 
+    #
     # The reference data will be held in two sets of dicts
     #
     # a) self.reference - the main section (unnamed)
@@ -396,7 +396,7 @@ class SimpleFMF(object):
 
     def add_reference_section (self, name):
         """Add an reference section. You may either use:
-            
+
            "add_reference_section(Name_of_Section)"
            "add_reference_entry(Name_of_entry, Data)"
            .
@@ -415,7 +415,7 @@ class SimpleFMF(object):
 
     def add_reference_entry (self, name, data):
         """Add reference entry.
-        
+
            Use in conjunction with "add_reference_section".
 
         """
@@ -429,7 +429,7 @@ class SimpleFMF(object):
 
     def add_subsection_reference_entry (self, name, data, subsection=None):
         """Add an subsection reference entry.
-        
+
            May be used instead of a group of "add_reference_section",
            "add_reference_entry" calls. Can also be used to add an
            reference entry. In the later form this should not be mixed
@@ -537,21 +537,20 @@ class SimpleFMF(object):
         """This method writes the data in an (FMF-)file."""
         status = False
         # TODO: verify some boundary conditions before writing
-        filehandle = open(filename, 'w')
-        if filehandle is not None:  #   TODO: exception handling
+        with open(filename, 'w') as filehandle:
             self.write_header(filehandle)
             self.write_reference(filehandle, self._reference)
             for name in self._section_order:
                 self.write_reference(filehandle,
                         self._subreferences[name], name)
-            tmp_table = self._tables[0]
-            if len(self._tables) > 1 or tmp_table.symbol != None:
-                filehandle.write("[*table definitions]\n")
+            if len(self._tables) > 0:
+                tmp_table = self._tables[0]
+                if len(self._tables) > 1 or tmp_table.symbol != None:
+                    filehandle.write("[*table definitions]\n")
+                    for tmp_table in self._tables:
+                        tmp_table.write_table_entry(filehandle)
                 for tmp_table in self._tables:
-                    tmp_table.write_table_entry(filehandle)
-            for tmp_table in self._tables:
-                tmp_table.write_table_definition (filehandle, self.comment)
-                tmp_table.write_table_data(filehandle, self.delimeter)
-            filehandle.close()
+                    tmp_table.write_table_definition (filehandle, self.comment)
+                    tmp_table.write_table_data(filehandle, self.delimeter)
             status = True
         return status
