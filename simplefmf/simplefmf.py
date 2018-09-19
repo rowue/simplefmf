@@ -217,6 +217,7 @@ class FMFTable(object):
         else:
             filehandle.write("%s\n" % self.table_entry)
 
+
     def table_definition(self, comment, comments=True):
         """Returns an list of strings containing the table definition.
 
