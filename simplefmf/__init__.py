@@ -37,4 +37,4 @@ u"""
 This is the simplefmf module.
 """
 
-from simplefmf import *       
+from simplefmf.simplefmf import SimpleFMF
